@@ -7,7 +7,7 @@ searchstr=$2
 
 if [ -z $filesdir ] || [ -z $searchstr ]
 then
-    echo there are 2 parameters please specify them
+    echo there are 2 parameters please specify both
 exit 1
 fi
 
