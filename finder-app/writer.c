@@ -9,6 +9,10 @@
 
 #define FUN_FAILURE (-1)
 
+int file_create(const char *file_name);
+void file_write(int fd, const char *str);
+void file_close(int fd);
+
 /* file_create: create a file descriptor associate with the specific file name. */
 int file_create(const char *file_name) {
 
@@ -61,7 +65,7 @@ void file_close(int fd) {
 
 int main(int argc, char *argv[]) {
 
-    const char *file_name = NULL, 
+    const char *file_name = NULL;
     const char *str = NULL;
 
     /* fd: File descriptor number */
