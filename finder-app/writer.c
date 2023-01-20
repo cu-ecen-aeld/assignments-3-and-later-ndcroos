@@ -9,13 +9,19 @@
 
 #define FUN_FAILURE (-1)
 
+/* file_create: create a file descriptor associates with the specific file name. */
 int file_create(const char *file_name);
+
+/* file_write: write a string to a file through fd. */
 void file_write(int fd, const char *str);
+
+/* file_close: free the resource */
 void file_close(int fd);
 
-/* file_create: create a file descriptor associates with the specific file name. */
+
 int file_create(const char *file_name) {
 
+    // file descriptor number
     int fd;
 
     // Mode permission bits
@@ -33,12 +39,13 @@ int file_create(const char *file_name) {
     return fd;
 }
 
-/* file_write: write a string to a file through fd. */
+
 void file_write(int fd, const char *str) {
 
     int retval;
 
     retval = write(fd, (const void *) str, strlen(str));
+
     if (retval == FUN_FAILURE) {
         printf("func %s fail, errno: %d\n", __func__, errno);
         printf("error: %s\n", strerror(errno));
@@ -51,7 +58,6 @@ void file_write(int fd, const char *str) {
     return;	
 }
 
-/* file_close: free the resource */
 void file_close(int fd) {
 
     if (close(fd) == FUN_FAILURE) {
