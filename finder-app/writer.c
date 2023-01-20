@@ -13,10 +13,12 @@ int file_create(const char *file_name);
 void file_write(int fd, const char *str);
 void file_close(int fd);
 
-/* file_create: create a file descriptor associate with the specific file name. */
+/* file_create: create a file descriptor associates with the specific file name. */
 int file_create(const char *file_name) {
 
     int fd;
+
+    // Mode permission bits
     mode_t mode = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
 
     fd = open(file_name, O_CREAT | O_WRONLY, mode);
@@ -65,12 +67,13 @@ void file_close(int fd) {
 
 int main(int argc, char *argv[]) {
 
+    // The two arguments
     const char *file_name = NULL;
     const char *str = NULL;
 
     /* fd: File descriptor number */
     int fd;
-    /* connect to the system logger */
+    /* connect to the system logger. Setup syslog logging for this utility */
     openlog(NULL, LOG_PID, LOG_USER);
 
     /* The default argc value is 1, but we will pass in two arguments so the argc will equal 3. */	
@@ -86,6 +89,7 @@ int main(int argc, char *argv[]) {
 
     fd = file_create(file_name);
     file_write(fd, str);
+    /* Use the syslog capability to write a message. */
     syslog(LOG_USER | LOG_DEBUG, "Writing %s to %s", str, file_name);
 
     file_close(fd);
