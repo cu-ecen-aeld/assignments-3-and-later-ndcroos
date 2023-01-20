@@ -1,59 +1,91 @@
-#include <unistd.h>
+#include <stdlib.h>
 #include <stdio.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <syslog.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <unistd.h>
+#include <syslog.h>
 
-#define NUM_ARGS 2
+#define FUN_FAILURE (-1)
+
+/* file_create: create a file descriptor associate with the specific file name. */
+int file_create(const char *file_name) {
+
+    int fd;
+    mode_t mode = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
+
+    fd = open(file_name, O_CREAT | O_WRONLY, mode);
+    if (fd == FUN_FAILURE) {
+        printf("func %s fail, errno: %d\n", __func__, errno);
+        printf("error: %s\n", strerror(errno));
+        syslog(LOG_USER | LOG_ERR, "%s", strerror(errno));
+        closelog();
+        exit(EXIT_FAILURE);
+    }
+
+    return fd;
+}
+
+/* file_write: write a string to a file through fd. */
+void file_write(int fd, const char *str) {
+
+    int retval;
+
+    retval = write(fd, (const void *) str, strlen(str));
+    if (retval == FUN_FAILURE) {
+        printf("func %s fail, errno: %d\n", __func__, errno);
+        printf("error: %s\n", strerror(errno));
+        syslog(LOG_USER | LOG_ERR, "%s", strerror(errno));
+        file_close(fd);
+        closelog();
+        exit(EXIT_FAILURE);
+    }
+
+    return;	
+}
+
+/* file_close: free the resource */
+void file_close(int fd) {
+
+    if (close(fd) == FUN_FAILURE) {
+        printf("func %s fail, errno: %d\n", __func__, errno);
+        printf("error: %s\n", strerror(errno));
+        syslog(LOG_USER | LOG_ERR, "%s", strerror(errno));
+        closelog();
+        exit(EXIT_FAILURE);
+    }
+    
+    return;
+}
 
 int main(int argc, char *argv[]) {
-    
+
+    const char *file_name = NULL, 
+    const char *str = NULL;
+
+    /* fd: File descriptor number */
     int fd;
-    ssize_t bwr;
-    char* wfn;
-    char* wstr;
-    
-    // Setup syslog logging for the utility using the LOG_USER facility.
-    openlog(NULL, 0, LOG_USER);
+    /* connect to the system logger */
+    openlog(NULL, LOG_PID, LOG_USER);
 
-    if(argc == 3) {
-
-        wfn = argv[1];
-        wstr = argv[2];
-
+    /* The default argc value is 1, but we will pass in two arguments so the argc will equal 3. */	
+    if (argc < 3) {
+        printf("Please pass in the correct arguments.\n");
+        syslog(LOG_USER | LOG_ERR, "Please pass in the correct arguments.");
+        closelog();
+        exit(EXIT_FAILURE);
     } else {
-	// Use the syslog capability to log unexpected errors with LOG_ERR level.
-        syslog(LOG_ERR, "ERROR: Incorrect number of args (given: %d / required %d)", NUM_ARGS, argc - 1);
-        return 1;
-    }
-    
-    fd = creat(wfn, 0644);
-
-    if(fd == -1) {
-	// Use the syslog capability to log unexpected errors with LOG_ERR level.
-        syslog(LOG_ERR, "ERROR: %m: %s", wfn);
-        return 1;
+       file_name = argv[1];
+       str = argv[2];
     }
 
-    long int wsize = strlen(wstr);
-    bwr = write(fd, wstr, (size_t) wsize);
+    fd = file_create(file_name);
+    file_write(fd, str);
+    syslog(LOG_USER | LOG_DEBUG, "Writing %s to %s", str, file_name);
 
-    if(bwr == -1) {
-	// Use the syslog capability to log unexpected errors with LOG_ERR level.
-        syslog(LOG_ERR, "ERROR: %m");
-        return 1;
-    } else if (bwr != wsize) {
-	// Use the syslog capability to log unexpected errors with LOG_ERR level.
-        syslog(LOG_ERR,"ERROR: Byte Requested: %ld / Bytes Written: %ld",wsize,bwr);
-        return 1;
-    }
+    file_close(fd);
+    closelog();
 
-    // Use the syslog capability to write a message “Writing <string> to <file>” 
-    // where <string> is the text string written to file (second argument) and <file> is the file created by the script.
-    // Written with LOG_DEBUG level.
-    syslog(LOG_DEBUG,"Writing %s to %s", wstr, wfn);
-    close(fd);
     return 0;
-
 }

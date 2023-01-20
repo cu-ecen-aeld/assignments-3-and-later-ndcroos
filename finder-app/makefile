@@ -6,7 +6,7 @@
 TOOLCHAIN_PFX=aarch64-none-linux-gnu-
 C_COMPILER=gcc
 
-CROSS_COMPILE=aarch64-none-linux-gnu-
+# CROSS_COMPILE=aarch64-none-linux-gnu-
 
 COMPILER=$(C_COMPILER)
 
