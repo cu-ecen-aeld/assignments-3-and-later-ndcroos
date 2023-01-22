@@ -1,4 +1,9 @@
 #include "systemcalls.h"
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+#include <fcntl.h>
+#include <string.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -16,7 +21,13 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
-
+    // system(cmd) passes the command name or program name specified by command
+    // to the host environemnt to be executed and returns after the command has been completed.
+    // Notice that you can use system() with a command that has redirection.
+    int result = system(cmd);
+    if (result == -1) {
+        return false;
+    }
     return true;
 }
 
@@ -59,9 +70,35 @@ bool do_exec(int count, ...)
  *
 */
 
-    va_end(args);
+    int pid = fork();
+    // creation of a child process was unsuccesful
+    if (pid == -1) {
+      perror("fork");
+      return false;
+    }
+    // returned to the newly created child process
+    if (pid == 0) {
+      execv(command[0], command);
+      perror("execv");
+      exit(1); // If execv runs correctly, will not reach here
+    }
 
-    return true;
+    int w_status;
+    // 
+    if (wait(&w_status) == -1) {
+      return false;
+    }
+    // From sys/wait.h
+    // Check return value of wait() if it is not an error
+    // Check process has terminated with code code 0 (succes)
+    if (WIFEXITED(w_status) && WEXITSTATUS(w_status) == 0) {
+      return true;
+    }
+
+    // From stdarg.h
+    // The C library macro va_end() ends the processing of the variable argument list
+    va_end(args);
+    return false;
 }
 
 /**
@@ -82,18 +119,55 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     command[count] = NULL;
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
-    command[count] = command[count];
 
 
 /*
  * TODO
- *   Call execv, but first using https://stackoverflow.com/a/13784315/1446624 as a refernce,
+ *   Call execv, but first using https://stackoverflow.com/a/13784315/1446624 as a reference,
  *   redirect standard out to a file specified by outputfile.
  *   The rest of the behaviour is same as do_exec()
  *
 */
 
-    va_end(args);
+    int fd = open(outputfile, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+    if (fd < 0) {
+      perror("open");
+      return false;
+    }
+    int pid = fork();
+    // Check for error
+    if (pid == -1) {
+      perror("fork");
+      close(fd);
+      return false;
+    } else if (pid == 0) {
+      // From unistd.h
+      // Duplicate a file descriptor. Allocate a new file descriptor
+      if (dup2(fd, 1) < 0) {
+        perror("dup2");
+        close(fd);
+        return false;
+      }
+      // Replaces the current process image with a new process image, 
+      // specified by command[0] (file)
+      execvp(command[0], command);
+      perror("execvp");
+      close(fd); // not supposed to reach here if execv is successful
+      exit(1);
+    }
 
-    return true;
+    int w_status;
+    if (wait(&w_status) == -1) {
+      close(fd);
+      return false;
+    }
+
+    if (WIFEXITED(w_status) && WEXITSTATUS(w_status) == 0) {
+      close(fd);
+      return true;
+    }
+
+    close(fd);
+    va_end(args);
+    return false;
 }
